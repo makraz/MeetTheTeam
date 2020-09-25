@@ -35,3 +35,9 @@ services:
     arguments: [ '@doctrine.orm.entity_manager' ]
     tags:
       - { name: validator.constraint_validator }
+
+  app.validator.exists_value_in_entity:
+    class: AppBundle\Validator\Constraints\ExistsValueInEntityValidator
+    arguments: [ '@doctrine.orm.entity_manager' ]
+    tags:
+      - { name: validator.constraint_validator }
