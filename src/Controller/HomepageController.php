@@ -4,8 +4,6 @@ namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController as Controller;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -13,21 +11,6 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 class HomepageController extends Controller
 {
-	/**
-	 * @var SessionInterface $session
-	 */
-	private SessionInterface $session;
-
-	/**
-	 * Homepage Controller constructor.
-	 *
-	 * @param SessionInterface $session
-	 */
-	public function __construct(SessionInterface $session)
-	{
-		$this->session = $session;
-	}
-
 	/**
 	 * Homepage.
 	 *
@@ -39,6 +22,10 @@ class HomepageController extends Controller
 	 */
 	public function index()
 	{
+		if ($this->isGranted('ROLE_USER')) {
+			return $this->redirectToRoute('colleague_index');
+		}
+
 		return $this->render('homepage.html.twig');
 	}
 }

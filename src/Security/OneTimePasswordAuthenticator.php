@@ -164,7 +164,9 @@ class OneTimePasswordAuthenticator extends AbstractFormLoginAuthenticator
 	 */
 	public function onAuthenticationSuccess(Request $request, TokenInterface $token, $providerKey)
 	{
-		return new RedirectResponse($this->router->generate('app_colleagues'));
+		$this->session->remove('identify_user_email');
+
+		return new RedirectResponse($this->router->generate('colleague_index'));
 	}
 
 	/**
@@ -199,6 +201,6 @@ class OneTimePasswordAuthenticator extends AbstractFormLoginAuthenticator
 	 */
 	protected function getLoginUrl(): string
 	{
-		return $this->router->generate('app_login');
+		return $this->router->generate('app_homepage');
 	}
 }
