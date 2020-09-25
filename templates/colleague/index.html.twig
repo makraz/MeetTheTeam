@@ -1,0 +1,55 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% block body %}
+    <div class="row">
+        <div class="col-md-12 mt-5">
+            <div class="clearfix">
+                <h1 class="float-left">Colleague index</h1>
+
+                <a href="{{ path('colleague_new') }}" class="btn btn-primary float-right">Create new</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mt-5">
+            <table class="table mt-2">
+                <thead>
+                <tr>
+                    <th>Picture</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Notes</th>
+                    <th>actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for colleague in colleagues %}
+                    <tr>
+                        <td>{{ colleague.id }}</td>
+                        <td>
+                            {% if colleague.picture is null %}
+                            n/a
+                            {% else %}
+                            <img src="{{ vich_uploader_asset(colleague, 'pictureFile') }}" alt="{{ colleague.picture }}"
+                                 width="96" height="96">
+                            {% endif %}
+                        </td>
+                        <td>{{ colleague.name }}</td>
+                        <td>{{ colleague.role|default('n/a') }}</td>
+                        <td>{{ colleague.notes|default('n/a') }}</td>
+                        <td class="d-inline-block">
+                            <a href="{{ path('colleague_edit', {'id': colleague.id}) }}" class="btn btn-sm btn-warning">edit</a>
+                            {{ include('colleague/_delete_form.html.twig') }}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6">no records found</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

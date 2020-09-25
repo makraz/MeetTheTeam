@@ -1,0 +1,21 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% form_theme form 'bootstrap_4_layout.html.twig' %}
+
+{% block body %}
+    <div class="row">
+        <div class="col-md-12 mt-5">
+            <div class="clearfix">
+                <h1 class="float-left">Create new Colleague</h1>
+
+                <a href="{{ path('colleague_index') }}" class="btn btn-primary float-right">back to list</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12 mt-2">
+                {{ include('colleague/_form.html.twig') }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

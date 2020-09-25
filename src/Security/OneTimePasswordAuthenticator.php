@@ -70,6 +70,21 @@ class OneTimePasswordAuthenticator extends AbstractFormLoginAuthenticator
 	}
 
 	/**
+	 * Override to control what happens when the user hits a secure page
+	 * but isn't logged in yet.
+	 *
+	 * @param Request $request
+	 * @param AuthenticationException|null $authException
+	 * @return RedirectResponse
+	 */
+	public function start(Request $request, AuthenticationException $authException = null)
+	{
+		$url = $this->router->generate('app_homepage');
+
+		return new RedirectResponse($url);
+	}
+
+	/**
 	 * Called on every request to decide if this authenticator should be used for the request.
 	 * Returning `false` will cause this authenticator to be skipped.
 	 *
@@ -201,6 +216,6 @@ class OneTimePasswordAuthenticator extends AbstractFormLoginAuthenticator
 	 */
 	protected function getLoginUrl(): string
 	{
-		return $this->router->generate('app_homepage');
+		return $this->router->generate('app_login');
 	}
 }
