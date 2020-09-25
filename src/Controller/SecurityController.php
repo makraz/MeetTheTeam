@@ -132,6 +132,7 @@ class SecurityController extends Controller
 			->priority(Email::PRIORITY_HIGH)
 			->subject('Your password')
 			->htmlTemplate('emails/password.html.twig')
+			->textTemplate('emails/password.txt.twig')
 			->context([
 				'emailAddress' => $email,
 				'password'     => $password,
