@@ -1,0 +1,34 @@
+{% extends 'layouts/base.html.twig' %}
+
+{% form_theme form 'bootstrap_4_layout.html.twig' %}
+
+{% block stylesheets %}
+    <style>
+        .vich-image {
+            text-align: center;
+        }
+
+        .vich-image img {
+            margin: 10px auto 0;
+            width: 256px;
+            height: 256px;
+        }
+    </style>
+{% endblock %}
+{% block body %}
+    <div class="row">
+        <div class="col-md-12 mt-5">
+            <div class="clearfix">
+                <h1 class="float-left">Edit Colleague</h1>
+
+                <a href="{{ path('colleague_index') }}" class="btn btn-primary float-right">back to list</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mt-2">
+            {{ include('colleague/_form.html.twig', {'button_label': 'Update'}) }}
+        </div>
+    </div>
+{% endblock %}

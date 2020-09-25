@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -31,7 +33,7 @@ class User implements UserInterface
 	 *
 	 * @Assert\NotBlank
 	 */
-	private $fullName;
+	private string $fullName;
 
 	/**
 	 * @var string $email
@@ -41,7 +43,17 @@ class User implements UserInterface
 	 * @Assert\NotBlank
 	 * @Assert\Email
 	 */
-	private $email;
+	private string $email;
+
+	/**
+	 * @ORM\OneToMany(targetEntity="App\Entity\Colleague", mappedBy="user", cascade={"remove"})
+	 */
+	private $colleagues;
+
+	public function __construct()
+	{
+		$this->colleagues = new ArrayCollection();
+	}
 
 	/**
 	 * @return int
@@ -82,6 +94,14 @@ class User implements UserInterface
 	{
 		$this->email = $email;
 	}
+
+//	/**
+//	 * @return Collection|Colleague[]
+//	 */
+//	public function getColleagues(): Collection
+//	{
+//		return $this->colleagues;
+//	}
 
 	public function getRoles()
 	{

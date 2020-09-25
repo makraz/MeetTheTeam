@@ -18,8 +18,6 @@ use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Exception\InvalidCsrfTokenException;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Component\Validator\Constraints\Email as EmailConstraint;
 use Symfony\Component\Validator\Constraints\NotBlank;
@@ -30,11 +28,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 class SecurityController extends Controller
 {
-	/**
-	 * @var CsrfTokenManagerInterface
-	 */
-	private CsrfTokenManagerInterface $csrfTokenManager;
-
 	/**
 	 * @var ValidatorInterface $validator
 	 */
@@ -58,21 +51,18 @@ class SecurityController extends Controller
 	/**
 	 * Security Controller constructor.
 	 *
-	 * @param CsrfTokenManagerInterface $csrfTokenManager
 	 * @param ValidatorInterface $validator
 	 * @param SessionInterface $session
 	 * @param AdapterInterface $cache
 	 * @param MailerInterface $mailer
 	 */
 	public function __construct(
-		CsrfTokenManagerInterface $csrfTokenManager,
 		ValidatorInterface $validator,
 		SessionInterface $session,
 		AdapterInterface $cache,
 		MailerInterface $mailer
 	)
 	{
-		$this->csrfTokenManager = $csrfTokenManager;
 		$this->validator = $validator;
 		$this->session = $session;
 		$this->cache = $cache;
@@ -94,9 +84,7 @@ class SecurityController extends Controller
 		$csrfToken = $request->request->get('_csrf_token');
 		$email = $request->request->get('username');
 
-		$token = new CsrfToken('authenticate', $csrfToken);
-
-		if (!$this->csrfTokenManager->isTokenValid($token)) {
+		if (!$this->isCsrfTokenValid('authenticate', $csrfToken)) {
 			throw new InvalidCsrfTokenException();
 		}
 
@@ -154,6 +142,10 @@ class SecurityController extends Controller
 	 */
 	public function login(AuthenticationUtils $authenticationUtils): Response
 	{
+		if ($this->isGranted('ROLE_USER')) {
+			return $this->redirectToRoute('colleague_index');
+		}
+
 		if (!$this->session->has('identify_user_email')) {
 			throw new AccessDeniedHttpException();
 		}
