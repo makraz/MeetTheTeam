@@ -4,15 +4,24 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Validator\Constraints\ExistsValueInEntity;
+use DateInterval;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController as Controller;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Exception\InvalidCsrfTokenException;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
-use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Symfony\Component\Validator\Constraints\Email as EmailConstraint;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -37,29 +46,53 @@ class SecurityController extends Controller
 	private SessionInterface $session;
 
 	/**
+	 * @var AdapterInterface $cache
+	 */
+	private AdapterInterface $cache;
+
+	/**
+	 * @var MailerInterface $mailer
+	 */
+	private MailerInterface $mailer;
+
+	/**
 	 * Security Controller constructor.
 	 *
 	 * @param CsrfTokenManagerInterface $csrfTokenManager
 	 * @param ValidatorInterface $validator
 	 * @param SessionInterface $session
+	 * @param AdapterInterface $cache
+	 * @param MailerInterface $mailer
 	 */
-	public function __construct(CsrfTokenManagerInterface $csrfTokenManager, ValidatorInterface $validator, SessionInterface $session)
+	public function __construct(
+		CsrfTokenManagerInterface $csrfTokenManager,
+		ValidatorInterface $validator,
+		SessionInterface $session,
+		AdapterInterface $cache,
+		MailerInterface $mailer
+	)
 	{
 		$this->csrfTokenManager = $csrfTokenManager;
 		$this->validator = $validator;
 		$this->session = $session;
+		$this->cache = $cache;
+		$this->mailer = $mailer;
 	}
 
 	/**
 	 * @Route("/identify", name="app_identify", methods={"POST"})
 	 *
 	 * @param Request $request
+	 *
 	 * @return Response
+	 *
+	 * @throws TransportExceptionInterface
+	 * @throws \Psr\Cache\InvalidArgumentException
 	 */
 	public function identifyUser(Request $request)
 	{
 		$csrfToken = $request->request->get('_csrf_token');
-		$username = $request->request->get('username');
+		$email = $request->request->get('username');
 
 		$token = new CsrfToken('authenticate', $csrfToken);
 
@@ -67,24 +100,76 @@ class SecurityController extends Controller
 			throw new InvalidCsrfTokenException();
 		}
 
-		$violations = $this->validator->validate($username, [
+		$violations = $this->validator->validate($email, [
 			new NotBlank(),
-			new Email(),
+			new EmailConstraint(),
 			new ExistsValueInEntity([
 				'field'       => 'email',
 				'entityClass' => User::class,
 			]),
 		]);
 
-		if (!is_string($username) || count($violations) !== 0) {
+		if (!is_string($email) || count($violations) !== 0) {
 			return $this->redirectToRoute('app_homepage', [
-				'username' => $username,
+				'username' => $email,
 				'error'    => $violations[0]->getMessage(),
 			]);
 		}
 
-		$this->session->set('identify_user_email', $username);
+		$password = md5(uniqid()); // Generate a random string
+		$cacheKey = md5($email); // email hash as a key
 
-		return $this->redirectToRoute('app_login_page');
+		$item = $this->cache->getItem($cacheKey);
+		$item->set($password);
+		$item->expiresAfter(new DateInterval('PT20M')); // the item will be cached for 20 minutes
+		$this->cache->save($item);
+
+		$this->session->set('identify_user_email', $email);
+
+		$emailMessage = (new TemplatedEmail())
+			->from(new Address('noreply@meettheteam.com', 'Meet The Team'))
+			->to($email)
+			->priority(Email::PRIORITY_HIGH)
+			->subject('Your password')
+			->htmlTemplate('emails/password.html.twig')
+			->context([
+				'emailAddress' => $email,
+				'password'     => $password,
+			]);
+
+		$this->mailer->send($emailMessage);
+
+		return $this->redirectToRoute('app_login');
+	}
+
+	/**
+	 * Homepage.
+	 *
+	 * @Route("/login", name="app_login", methods={"GET", "POST"})
+	 *
+	 * @param AuthenticationUtils $authenticationUtils
+	 *
+	 * @return \Symfony\Component\HttpFoundation\Response
+	 */
+	public function login(AuthenticationUtils $authenticationUtils): Response
+	{
+		if (!$this->session->has('identify_user_email')) {
+			throw new AccessDeniedHttpException();
+		}
+
+		// Get the login error if there is one
+		$error = $authenticationUtils->getLastAuthenticationError();
+
+		return $this->render('login.html.twig', [
+			'error' => $error,
+		]);
+	}
+
+	/**
+	 * @Route("/logout", name="app_logout")
+	 */
+	public function logout(): Response
+	{
+		// controller can be blank: it will never be executed!
 	}
 }

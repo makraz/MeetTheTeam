@@ -1,15 +1,20 @@
 framework:
     cache:
         # Unique name of your app: used to compute stable namespaces for cache keys.
-        #prefix_seed: your_vendor_name/app_name
+        prefix_seed: coddict/meettheteam
 
         # The "app" cache stores to the filesystem by default.
         # The data in this cache should persist between deploys.
         # Other options include:
 
         # Redis
-        #app: cache.adapter.redis
-        #default_redis_provider: redis://localhost
+        app: cache.adapter.redis
+        # default_redis_provider: redis://localhost
+        default_redis_provider: '%env(resolve:CACHE_URL)%'
+        # I'm running an instance of Redis inside a Docker container, and I've created an entry in my hosts file
+        # that will point the redis domain at 127.0.0.1. The port 6379 will probably be the same for you,
+        # as this is the default, but you'll need to alter the rest of the url to meet your own needs.
+        # e.g. redis://<your url here>:6379
 
         # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
         #app: cache.adapter.apcu

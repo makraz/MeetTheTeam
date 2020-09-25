@@ -41,22 +41,4 @@ class HomepageController extends Controller
 	{
 		return $this->render('homepage.html.twig');
 	}
-
-	/**
-	 * Homepage.
-	 *
-	 * @Route("/login", name="app_login_page", methods={"GET"})
-	 *
-	 * @return \Symfony\Component\HttpFoundation\Response
-	 *
-	 * @return Response
-	 */
-	public function optPage()
-	{
-		if (!$this->session->has('identify_user_email')) {
-			throw new AccessDeniedHttpException();
-		}
-
-		return $this->render('login.html.twig');
-	}
 }
