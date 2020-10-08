@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Validator\Constraints\ExistsValueInEntity;
 use DateInterval;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController as Controller;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
@@ -28,141 +29,141 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 class SecurityController extends Controller
 {
-	/**
-	 * @var ValidatorInterface $validator
-	 */
-	private ValidatorInterface $validator;
+    /**
+     * @var ValidatorInterface $validator
+     */
+    private ValidatorInterface $validator;
 
-	/**
-	 * @var SessionInterface $session
-	 */
-	private SessionInterface $session;
+    /**
+     * @var SessionInterface $session
+     */
+    private SessionInterface $session;
 
-	/**
-	 * @var AdapterInterface $cache
-	 */
-	private AdapterInterface $cache;
+    /**
+     * @var AdapterInterface $cache
+     */
+    private AdapterInterface $cache;
 
-	/**
-	 * @var MailerInterface $mailer
-	 */
-	private MailerInterface $mailer;
+    /**
+     * @var MailerInterface $mailer
+     */
+    private MailerInterface $mailer;
 
-	/**
-	 * Security Controller constructor.
-	 *
-	 * @param ValidatorInterface $validator
-	 * @param SessionInterface $session
-	 * @param AdapterInterface $cache
-	 * @param MailerInterface $mailer
-	 */
-	public function __construct(
-		ValidatorInterface $validator,
-		SessionInterface $session,
-		AdapterInterface $cache,
-		MailerInterface $mailer
-	)
-	{
-		$this->validator = $validator;
-		$this->session = $session;
-		$this->cache = $cache;
-		$this->mailer = $mailer;
-	}
+    /**
+     * Security Controller constructor.
+     *
+     * @param ValidatorInterface $validator
+     * @param SessionInterface $session
+     * @param AdapterInterface $cache
+     * @param MailerInterface $mailer
+     */
+    public function __construct(
+        ValidatorInterface $validator,
+        SessionInterface $session,
+        AdapterInterface $cache,
+        MailerInterface $mailer
+    )
+    {
+        $this->validator = $validator;
+        $this->session = $session;
+        $this->cache = $cache;
+        $this->mailer = $mailer;
+    }
 
-	/**
-	 * @Route("/identify", name="app_identify", methods={"POST"})
-	 *
-	 * @param Request $request
-	 *
-	 * @return Response
-	 *
-	 * @throws TransportExceptionInterface
-	 * @throws \Psr\Cache\InvalidArgumentException
-	 */
-	public function identifyUser(Request $request)
-	{
-		$csrfToken = $request->request->get('_csrf_token');
-		$email = $request->request->get('username');
+    /**
+     * @Route("/identify", name="app_identify", methods={"POST"})
+     *
+     * @param Request $request
+     *
+     * @return Response
+     *
+     * @throws TransportExceptionInterface
+     * @throws InvalidArgumentException
+     */
+    public function identifyUser(Request $request)
+    {
+        $csrfToken = $request->request->get('_csrf_token');
+        $email = $request->request->get('username');
 
-		if (!$this->isCsrfTokenValid('authenticate', $csrfToken)) {
-			throw new InvalidCsrfTokenException();
-		}
+        if (!$this->isCsrfTokenValid('authenticate', $csrfToken)) {
+            throw new InvalidCsrfTokenException();
+        }
 
-		$violations = $this->validator->validate($email, [
-			new NotBlank(),
-			new EmailConstraint(),
-			new ExistsValueInEntity([
-				'field'       => 'email',
-				'entityClass' => User::class,
-			]),
-		]);
+        $violations = $this->validator->validate($email, [
+            new NotBlank(),
+            new EmailConstraint(),
+            new ExistsValueInEntity([
+                'field'       => 'email',
+                'entityClass' => User::class,
+            ]),
+        ]);
 
-		if (!is_string($email) || count($violations) !== 0) {
-			return $this->redirectToRoute('app_homepage', [
-				'username' => $email,
-				'error'    => $violations[0]->getMessage(),
-			]);
-		}
+        if (!is_string($email) || count($violations) !== 0) {
+            return $this->redirectToRoute('app_homepage', [
+                'username' => $email,
+                'error'    => $violations[0]->getMessage(),
+            ]);
+        }
 
-		$password = md5(uniqid()); // Generate a random string
-		$cacheKey = md5($email); // email hash as a key
+        $password = md5(uniqid()); // Generate a random string
+        $cacheKey = md5($email); // email hash as a key
 
-		$item = $this->cache->getItem($cacheKey);
-		$item->set($password);
-		$item->expiresAfter(new DateInterval('PT20M')); // the item will be cached for 20 minutes
-		$this->cache->save($item);
+        $item = $this->cache->getItem($cacheKey);
+        $item->set($password);
+        $item->expiresAfter(new DateInterval('PT20M')); // the item will be cached for 20 minutes
+        $this->cache->save($item);
 
-		$this->session->set('identify_user_email', $email);
+        $this->session->set('identify_user_email', $email);
 
-		$emailMessage = (new TemplatedEmail())
-			->from(new Address('noreply@meettheteam.com', 'Meet The Team'))
-			->to($email)
-			->priority(Email::PRIORITY_HIGH)
-			->subject('Your password')
-			->htmlTemplate('emails/password.html.twig')
-			->textTemplate('emails/password.txt.twig')
-			->context([
-				'emailAddress' => $email,
-				'password'     => $password,
-			]);
+        $emailMessage = (new TemplatedEmail())
+            ->from(new Address('noreply@meettheteam.com', 'Meet The Team'))
+            ->to($email)
+            ->priority(Email::PRIORITY_HIGH)
+            ->subject('Your password')
+            ->htmlTemplate('emails/password.html.twig')
+            ->textTemplate('emails/password.txt.twig')
+            ->context([
+                'emailAddress' => $email,
+                'password'     => $password,
+            ]);
 
-		$this->mailer->send($emailMessage);
+        $this->mailer->send($emailMessage);
 
-		return $this->redirectToRoute('app_login');
-	}
+        return $this->redirectToRoute('app_login');
+    }
 
-	/**
-	 * Homepage.
-	 *
-	 * @Route("/login", name="app_login", methods={"GET", "POST"})
-	 *
-	 * @param AuthenticationUtils $authenticationUtils
-	 *
-	 * @return \Symfony\Component\HttpFoundation\Response
-	 */
-	public function login(AuthenticationUtils $authenticationUtils): Response
-	{
-		if ($this->isGranted('ROLE_USER')) {
-			return $this->redirectToRoute('colleague_index');
-		}
+    /**
+     * Homepage.
+     *
+     * @Route("/login", name="app_login", methods={"GET", "POST"})
+     *
+     * @param AuthenticationUtils $authenticationUtils
+     *
+     * @return Response
+     */
+    public function login(AuthenticationUtils $authenticationUtils): Response
+    {
+        if ($this->isGranted('ROLE_USER')) {
+            return $this->redirectToRoute('colleague_index');
+        }
 
-		if (!$this->session->has('identify_user_email')) {
-			throw new AccessDeniedHttpException();
-		}
+        if (!$this->session->has('identify_user_email')) {
+            throw new AccessDeniedHttpException();
+        }
 
-		// Get the login error if there is one
-		$error = $authenticationUtils->getLastAuthenticationError();
+        // Get the login error if there is one
+        $error = $authenticationUtils->getLastAuthenticationError();
 
-		return $this->render('login.html.twig', [
-			'error' => $error,
-		]);
-	}
+        return $this->render('login.html.twig', [
+            'error' => $error,
+        ]);
+    }
 
-	/**
-	 * @Route("/logout", name="app_logout")
-	 */
-	public function logout(): Response
-	{
-		// controller can be blank: it will never be executed!
-	}
+    /**
+     * @Route("/logout", name="app_logout")
+     */
+    public function logout(): Response
+    {
+        // controller can be blank: it will never be executed!
+    }
 }
