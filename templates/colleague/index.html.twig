@@ -16,6 +16,7 @@
             <table class="table mt-2">
                 <thead>
                 <tr>
+                    <th>#</th>
                     <th>Picture</th>
                     <th>Name</th>
                     <th>Role</th>
@@ -29,10 +30,11 @@
                         <td>{{ colleague.id }}</td>
                         <td>
                             {% if colleague.picture is null %}
-                            n/a
+                                n/a
                             {% else %}
-                            <img src="{{ vich_uploader_asset(colleague, 'pictureFile') }}" alt="{{ colleague.picture }}"
-                                 width="96" height="96">
+                                <img src="{{ vich_uploader_asset(colleague, 'pictureFile') }}"
+                                     alt="{{ colleague.picture }}"
+                                     width="96" height="96">
                             {% endif %}
                         </td>
                         <td>{{ colleague.name }}</td>
